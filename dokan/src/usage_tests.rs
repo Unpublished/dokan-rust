@@ -773,12 +773,16 @@ impl<'a, 'b: 'a> FileSystemHandler<'a, 'b> for TestHandler {
 		let file_name = file_name.to_string_lossy();
 		match file_name.as_ref() {
 			"\\test_get_file_security" => {
-				self.tx
-					.send(HandlerSignal::GetFileSecurity(
-						security_information,
-						buffer_length,
-					))
-					.unwrap();
+				if security_information != ATTRIBUTE_SECURITY_INFORMATION {
+					self.tx
+						.send(HandlerSignal::GetFileSecurity(
+							security_information,
+							buffer_length,
+						))
+						.unwrap();
+				} else {
+					println!("Ignoring request from GitHub CI");
+				}
 				let desc = create_test_descriptor();
 				let result = Ok(desc.len() as u32);
 				if desc.len() <= buffer_length as usize {
