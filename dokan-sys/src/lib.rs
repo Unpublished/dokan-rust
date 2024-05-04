@@ -15,15 +15,34 @@
 
 use std::ffi::c_void;
 
-use libc::c_int;
-use windows_sys::core::PCWSTR;
-use windows_sys::Win32::{
-	Foundation::{BOOL, BOOLEAN, FILETIME, MAX_PATH, NTSTATUS, UNICODE_STRING},
-	Storage::FileSystem::BY_HANDLE_FILE_INFORMATION,
-	Storage::FileSystem::WIN32_FIND_DATAW,
+use windows_sys::{
+	core::{
+		PCWSTR,
+		PWSTR
+	},
+	Win32::{
+		Foundation::{
+			BOOL,
+			BOOLEAN,
+			FILETIME,
+			HANDLE,
+			MAX_PATH,
+			NTSTATUS,
+			UNICODE_STRING
+		},
+		Security::{
+			OBJECT_SECURITY_INFORMATION,
+			PSECURITY_DESCRIPTOR
+		},
+		Storage::FileSystem::{
+			BY_HANDLE_FILE_INFORMATION,
+			FILE_ACCESS_RIGHTS,
+			FILE_CREATION_DISPOSITION,
+			FILE_FLAGS_AND_ATTRIBUTES,
+			WIN32_FIND_DATAW
+		}
+	},
 };
-use windows_sys::Win32::Foundation::HANDLE;
-use windows_sys::Win32::Security::PSECURITY_DESCRIPTOR;
 
 use win32::PWIN32_FIND_STREAM_DATA;
 
@@ -86,7 +105,7 @@ pub struct DOKAN_FILE_INFO {
 
 pub type PDOKAN_FILE_INFO = *mut DOKAN_FILE_INFO;
 
-pub type PFillFindData = unsafe extern "stdcall" fn(*mut WIN32_FIND_DATAW, PDOKAN_FILE_INFO) -> c_int;
+pub type PFillFindData = unsafe extern "stdcall" fn(*mut WIN32_FIND_DATAW, PDOKAN_FILE_INFO) -> i32;
 pub type PFillFindStreamData = unsafe extern "stdcall" fn(PWIN32_FIND_STREAM_DATA, *mut c_void) -> BOOL;
 
 #[repr(C)]
@@ -96,9 +115,9 @@ pub struct DOKAN_ACCESS_STATE {
 	pub GenerateOnClose: BOOLEAN,
 	pub AuditPrivileges: BOOLEAN,
 	pub Flags: u32,
-	pub RemainingDesiredAccess: u32,
-	pub PreviouslyGrantedAccess: u32,
-	pub OriginalDesiredAccess: u32,
+	pub RemainingDesiredAccess: FILE_ACCESS_RIGHTS,
+	pub PreviouslyGrantedAccess: FILE_ACCESS_RIGHTS,
+	pub OriginalDesiredAccess: FILE_ACCESS_RIGHTS,
 	pub SecurityDescriptor: PSECURITY_DESCRIPTOR,
 	pub ObjectName: UNICODE_STRING,
 	pub ObjectType: UNICODE_STRING,
@@ -109,7 +128,7 @@ pub type PDOKAN_ACCESS_STATE = *mut DOKAN_ACCESS_STATE;
 #[repr(C)]
 pub struct DOKAN_IO_SECURITY_CONTEXT {
 	pub AccessState: DOKAN_ACCESS_STATE,
-	pub DesiredAccess: u32,
+	pub DesiredAccess: FILE_ACCESS_RIGHTS,
 }
 
 pub type PDOKAN_IO_SECURITY_CONTEXT = *mut DOKAN_IO_SECURITY_CONTEXT;
@@ -121,7 +140,7 @@ pub struct DOKAN_OPERATIONS {
 		extern "stdcall" fn(
 			FileName: PCWSTR,
 			SecurityContext: PDOKAN_IO_SECURITY_CONTEXT,
-			DesiredAccess: u32,
+			DesiredAccess: FILE_ACCESS_RIGHTS,
 			FileAttributes: u32,
 			ShareAccess: u32,
 			CreateDisposition: u32,
@@ -243,12 +262,12 @@ pub struct DOKAN_OPERATIONS {
 	>,
 	pub GetVolumeInformation: Option<
 		extern "stdcall" fn(
-			VolumeNameBuffer: *mut u16,
+			VolumeNameBuffer: PWSTR,
 			VolumeNameSize: u32,
 			VolumeSerialNumber: *mut u32,
 			MaximumComponentLength: *mut u32,
 			FileSystemFlags: *mut u32,
-			FileSystemNameBuffer: *mut u16,
+			FileSystemNameBuffer: PWSTR,
 			FileSystemNameSize: u32,
 			DokanFileInfo: PDOKAN_FILE_INFO,
 		) -> NTSTATUS,
@@ -260,8 +279,8 @@ pub struct DOKAN_OPERATIONS {
 	pub GetFileSecurity: Option<
 		extern "stdcall" fn(
 			FileName: PCWSTR,
-			PSECURITY_INFORMATION: *mut u32,
-			PSECURITY_DESCRIPTOR: *mut c_void,
+			PSECURITY_INFORMATION: *mut OBJECT_SECURITY_INFORMATION,
+			PSECURITY_DESCRIPTOR: PSECURITY_DESCRIPTOR,
 			BufferLength: u32,
 			LengthNeeded: *mut u32,
 			DokanFileInfo: PDOKAN_FILE_INFO,
@@ -270,8 +289,8 @@ pub struct DOKAN_OPERATIONS {
 	pub SetFileSecurity: Option<
 		extern "stdcall" fn(
 			FileName: PCWSTR,
-			SecurityInformation: *mut u32,
-			SecurityDescriptor: *mut c_void,
+			SecurityInformation: *mut OBJECT_SECURITY_INFORMATION,
+			SecurityDescriptor: PSECURITY_DESCRIPTOR,
 			BufferLength: u32,
 			DokanFileInfo: PDOKAN_FILE_INFO,
 		) -> NTSTATUS,
@@ -288,14 +307,14 @@ pub struct DOKAN_OPERATIONS {
 
 pub type PDOKAN_OPERATIONS = *mut DOKAN_OPERATIONS;
 
-pub const DOKAN_SUCCESS: c_int = 0;
-pub const DOKAN_ERROR: c_int = -1;
-pub const DOKAN_DRIVE_LETTER_ERROR: c_int = -2;
-pub const DOKAN_DRIVER_INSTALL_ERROR: c_int = -3;
-pub const DOKAN_START_ERROR: c_int = -4;
-pub const DOKAN_MOUNT_ERROR: c_int = -5;
-pub const DOKAN_MOUNT_POINT_ERROR: c_int = -6;
-pub const DOKAN_VERSION_ERROR: c_int = -7;
+pub const DOKAN_SUCCESS: i32 = 0;
+pub const DOKAN_ERROR: i32 = -1;
+pub const DOKAN_DRIVE_LETTER_ERROR: i32 = -2;
+pub const DOKAN_DRIVER_INSTALL_ERROR: i32 = -3;
+pub const DOKAN_START_ERROR: i32 = -4;
+pub const DOKAN_MOUNT_ERROR: i32 = -5;
+pub const DOKAN_MOUNT_POINT_ERROR: i32 = -6;
+pub const DOKAN_VERSION_ERROR: i32 = -7;
 
 #[repr(C)]
 pub struct DOKAN_MOUNT_POINT_INFO {
@@ -312,12 +331,12 @@ pub type PDOKAN_MOUNT_POINT_INFO = *mut DOKAN_MOUNT_POINT_INFO;
 extern "stdcall" {
 	pub fn DokanInit();
 	pub fn DokanShutdown();
-	pub fn DokanMain(DokanOptions: PDOKAN_OPTIONS, DokanOperations: PDOKAN_OPERATIONS) -> c_int;
+	pub fn DokanMain(DokanOptions: PDOKAN_OPTIONS, DokanOperations: PDOKAN_OPERATIONS) -> i32;
 	pub fn DokanCreateFileSystem(
 		DokanOptions: PDOKAN_OPTIONS,
 		DokanOperations: PDOKAN_OPERATIONS,
 		DokanInstance: *mut DOKAN_HANDLE,
-	) -> c_int;
+	) -> i32;
 	pub fn DokanIsFileSystemRunning(DokanInstance: DOKAN_HANDLE) -> BOOL;
 	pub fn DokanWaitForFileSystemClosed(
 		DokanInstance: DOKAN_HANDLE,
@@ -334,13 +353,13 @@ extern "stdcall" {
 	pub fn DokanGetMountPointList(uncOnly: BOOL, nbRead: *mut u32) -> PDOKAN_MOUNT_POINT_INFO;
 	pub fn DokanReleaseMountPointList(list: PDOKAN_MOUNT_POINT_INFO);
 	pub fn DokanMapKernelToUserCreateFileFlags(
-		DesiredAccess: u32,
-		FileAttributes: u32,
+		DesiredAccess: FILE_ACCESS_RIGHTS,
+		FileAttributes: FILE_FLAGS_AND_ATTRIBUTES,
 		CreateOptions: u32,
-		CreateDisposition: u32,
-		outDesiredAccess: *mut u32,
-		outFileAttributesAndFlags: *mut u32,
-		outCreationDisposition: *mut u32,
+		CreateDisposition: FILE_CREATION_DISPOSITION,
+		outDesiredAccess: *mut FILE_ACCESS_RIGHTS,
+		outFileAttributesAndFlags: *mut FILE_FLAGS_AND_ATTRIBUTES,
+		outCreationDisposition: *mut FILE_CREATION_DISPOSITION,
 	);
 	pub fn DokanNotifyCreate(
 		DokanInstance: DOKAN_HANDLE,

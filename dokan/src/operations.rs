@@ -7,14 +7,22 @@ use dokan_sys::{
 };
 use widestring::U16CStr;
 use windows_sys::{
-	core::PCWSTR,
+	core::{
+		PCWSTR,
+		PWSTR
+	},
 	Win32::{
 		Foundation::{BOOL, FILETIME, NTSTATUS, STATUS_BUFFER_OVERFLOW, STATUS_OBJECT_NAME_COLLISION, TRUE},
 		Security::{OBJECT_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR},
-		Storage::FileSystem::BY_HANDLE_FILE_INFORMATION
+		Storage::{
+			FileSystem::{
+				BY_HANDLE_FILE_INFORMATION,
+				FILE_ACCESS_RIGHTS,
+				FILE_FLAGS_AND_ATTRIBUTES
+			}
+		}
 	}
 };
-use windows_sys::Win32::Storage::FileSystem::{FILE_ACCESS_RIGHTS, FILE_FLAGS_AND_ATTRIBUTES};
 
 use crate::{
 	data::{wrap_fill_data, OperationInfo},
@@ -381,12 +389,12 @@ pub extern "stdcall" fn get_disk_free_space<'c, 'h: 'c, FSH: FileSystemHandler<'
 }
 
 pub extern "stdcall" fn get_volume_information<'c, 'h: 'c, FSH: FileSystemHandler<'c, 'h> + 'h>(
-	volume_name_buffer: *mut u16,
+	volume_name_buffer: PWSTR,
 	volume_name_size: u32,
 	volume_serial_number: *mut u32,
 	maximum_component_length: *mut u32,
 	file_system_flags: *mut u32,
-	file_system_name_buffer: *mut u16,
+	file_system_name_buffer: PWSTR,
 	file_system_name_size: u32,
 	dokan_file_info: PDOKAN_FILE_INFO,
 ) -> NTSTATUS {

@@ -23,7 +23,10 @@
 //! [`winapi`]: https://crates.io/crates/winapi
 
 use widestring::U16CStr;
-use windows_sys::Win32::Foundation::{FALSE, GetLastError, NTSTATUS, TRUE};
+use windows_sys::Win32::{
+	Foundation::{FALSE, GetLastError, NTSTATUS, TRUE},
+	Storage::FileSystem::{FILE_ACCESS_RIGHTS, FILE_CREATION_DISPOSITION, FILE_FLAGS_AND_ATTRIBUTES}
+};
 
 use dokan_sys::*;
 /// Re-exported from `dokan-sys` for convenience.
@@ -197,11 +200,11 @@ pub fn win32_ensure(condition: bool) -> Result<(), NTSTATUS> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UserCreateFileFlags {
 	/// The requested access to the file.
-	pub desired_access: u32,
+	pub desired_access: FILE_ACCESS_RIGHTS,
 	/// The file attributes and flags.
-	pub flags_and_attributes: u32,
+	pub flags_and_attributes: FILE_FLAGS_AND_ATTRIBUTES,
 	/// The action to take on the file that exists or does not exist.
-	pub creation_disposition: u32,
+	pub creation_disposition: FILE_CREATION_DISPOSITION,
 }
 
 /// Converts the arguments passed to [`FileSystemHandler::create_file`] to flags accepted by the
@@ -213,10 +216,10 @@ pub struct UserCreateFileFlags {
 /// [`CreateFile`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew
 /// [`IRP_MJ_CREATE`]: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/irp-mj-create
 pub fn map_kernel_to_user_create_file_flags(
-	desired_access: u32,
-	file_attributes: u32,
+	desired_access: FILE_ACCESS_RIGHTS,
+	file_attributes: FILE_FLAGS_AND_ATTRIBUTES,
 	create_options: u32,
-	create_disposition: u32,
+	create_disposition: FILE_CREATION_DISPOSITION,
 ) -> UserCreateFileFlags {
 	let mut result = UserCreateFileFlags {
 		desired_access: 0,
