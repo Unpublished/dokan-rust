@@ -103,7 +103,7 @@ impl Drop for MountPointList {
 /// Lists of active Dokan mount points.
 ///
 /// Returns `None` in case of error.
-pub fn list_mount_points<'a>(unc_only: bool) -> Option<MountPointList> {
+pub fn list_mount_points(unc_only: bool) -> Option<MountPointList> {
 	unsafe {
 		let mut len: u32 = 0;
 		let list_ptr = DokanGetMountPointList(unc_only.into(), &mut len);

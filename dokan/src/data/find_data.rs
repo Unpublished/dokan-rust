@@ -1,4 +1,4 @@
-use std::{mem::transmute, time::SystemTime};
+use std::time::SystemTime;
 
 use widestring::U16CString;
 use windows_sys::Win32::Foundation::MAX_PATH;
@@ -90,7 +90,7 @@ impl ToRawStruct<WIN32_FIND_STREAM_DATA> for FindStreamData {
 			let mut c_stream_name = [0; MAX_STREAM_NAME];
 			c_stream_name[..name_slice.len()].copy_from_slice(name_slice);
 			Some(WIN32_FIND_STREAM_DATA {
-				StreamSize: unsafe { transmute(self.size) },
+				StreamSize: self.size,
 				cStreamName: c_stream_name,
 			})
 		} else {

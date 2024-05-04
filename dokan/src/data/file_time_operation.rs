@@ -1,7 +1,8 @@
 use std::{
 	mem::transmute_copy,
-	time::{Duration, SystemTime, UNIX_EPOCH},
+	time::{Duration, SystemTime, UNIX_EPOCH}
 };
+
 use windows_sys::Win32::Foundation::FILETIME;
 
 use crate::to_file_time::FILETIME_OFFSET;
@@ -20,6 +21,7 @@ pub enum FileTimeOperation {
 }
 
 impl From<*const FILETIME> for FileTimeOperation {
+	#[allow(clippy::not_unsafe_ptr_arg_deref)]
 	fn from(time: *const FILETIME) -> Self {
 		unsafe {
 			let time_val = transmute_copy::<_, i64>(&*time);
