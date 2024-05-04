@@ -1,11 +1,10 @@
 use std::{
-	marker::PhantomData
-	,
+	marker::PhantomData,
 	time::Duration,
 };
 
 use widestring::U16CStr;
-use windows_sys::Win32::Foundation::HANDLE;
+use windows_sys::Win32::Foundation::{HANDLE, TRUE};
 
 use dokan_sys::{
 	DOKAN_FILE_INFO, DOKAN_OPTIONS, DokanOpenRequestorToken, DokanResetTimeout, PDOKAN_FILE_INFO,
@@ -147,7 +146,7 @@ impl<'c, 'h: 'c, FSH: FileSystemHandler<'c, 'h> + 'h> OperationInfo<'c, 'h, FSH>
 	/// Returns `true` on success.
 	#[must_use]
 	pub fn reset_timeout(&self, timeout: Duration) -> bool {
-		unsafe { DokanResetTimeout(timeout.as_millis() as u32, self.file_info) != 0 }
+		unsafe { DokanResetTimeout(timeout.as_millis() as u32, self.file_info) == TRUE }
 	}
 
 	/// Gets the access token associated with the calling process.
