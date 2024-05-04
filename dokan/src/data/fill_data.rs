@@ -2,11 +2,8 @@ use std::{
 	error::Error,
 	fmt::{self, Display, Formatter},
 };
+use windows_sys::Win32::Foundation::{NTSTATUS, STATUS_BUFFER_OVERFLOW, STATUS_INTERNAL_ERROR};
 
-use winapi::shared::{
-	ntdef::NTSTATUS,
-	ntstatus::{STATUS_BUFFER_OVERFLOW, STATUS_INTERNAL_ERROR},
-};
 
 /// Error type for the `fill_data` callbacks.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

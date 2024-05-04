@@ -1,8 +1,8 @@
 use std::{mem::transmute, time::SystemTime};
 
-use dokan_sys::win32::WIN32_FIND_STREAM_DATA;
 use widestring::U16CString;
-use winapi::{shared::minwindef::MAX_PATH, um::minwinbase::WIN32_FIND_DATAW};
+use windows_sys::Win32::Foundation::MAX_PATH;
+use windows_sys::Win32::Storage::FileSystem::{WIN32_FIND_DATAW, WIN32_FIND_STREAM_DATA};
 
 use crate::{to_file_time::ToFileTime, FillDataError, FillDataResult};
 
@@ -43,8 +43,8 @@ pub struct FindData {
 impl ToRawStruct<WIN32_FIND_DATAW> for FindData {
 	fn to_raw_struct(&self) -> Option<WIN32_FIND_DATAW> {
 		let name_slice = self.file_name.as_slice_with_nul();
-		if name_slice.len() <= MAX_PATH {
-			let mut c_file_name = [0; MAX_PATH];
+		if name_slice.len() <= MAX_PATH as usize {
+			let mut c_file_name = [0; MAX_PATH as usize];
 			c_file_name[..name_slice.len()].copy_from_slice(name_slice);
 			Some(WIN32_FIND_DATAW {
 				dwFileAttributes: self.attributes,
@@ -81,7 +81,7 @@ pub struct FindStreamData {
 	pub name: U16CString,
 }
 
-const MAX_STREAM_NAME: usize = MAX_PATH + 36;
+const MAX_STREAM_NAME: usize = (MAX_PATH + 36) as usize;
 
 impl ToRawStruct<WIN32_FIND_STREAM_DATA> for FindStreamData {
 	fn to_raw_struct(&self) -> Option<WIN32_FIND_STREAM_DATA> {
@@ -116,10 +116,10 @@ pub(crate) fn wrap_fill_data<T, U: ToRawStruct<T>, TArg: Copy, TResult: PartialE
 
 #[cfg(test)]
 mod tests {
+	use std::ffi::c_int;
 	use std::ptr;
 
 	use dokan_sys::PDOKAN_FILE_INFO;
-	use winapi::ctypes::c_int;
 
 	use super::*;
 

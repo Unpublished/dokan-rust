@@ -1,9 +1,7 @@
+use std::ffi::c_void;
 use dokan_sys::DOKAN_IO_SECURITY_CONTEXT;
 use widestring::U16CStr;
-use winapi::{
-	shared::{ntdef::NTSTATUS, ntstatus::STATUS_NOT_IMPLEMENTED},
-	um::winnt::{ACCESS_MASK, PSECURITY_DESCRIPTOR},
-};
+use windows_sys::Win32::Foundation::{NTSTATUS, STATUS_NOT_IMPLEMENTED};
 
 use crate::data::{
 	CreateFileInfo, DiskSpaceInfo, FileInfo, FileTimeOperation, FillDataResult, FindData,
@@ -50,7 +48,7 @@ pub trait FileSystemHandler<'c, 'h: 'c>: Sync + Sized + 'h {
 		&'h self,
 		file_name: &U16CStr,
 		security_context: &DOKAN_IO_SECURITY_CONTEXT,
-		desired_access: ACCESS_MASK,
+		desired_access: u32,
 		file_attributes: u32,
 		share_access: u32,
 		create_disposition: u32,
@@ -438,7 +436,7 @@ pub trait FileSystemHandler<'c, 'h: 'c>: Sync + Sized + 'h {
 		&'h self,
 		file_name: &U16CStr,
 		security_information: u32,
-		security_descriptor: PSECURITY_DESCRIPTOR,
+		security_descriptor: *mut c_void,
 		buffer_length: u32,
 		info: &OperationInfo<'c, 'h, Self>,
 		context: &'c Self::Context,
@@ -455,7 +453,7 @@ pub trait FileSystemHandler<'c, 'h: 'c>: Sync + Sized + 'h {
 		&'h self,
 		file_name: &U16CStr,
 		security_information: u32,
-		security_descriptor: PSECURITY_DESCRIPTOR,
+		security_descriptor: *mut c_void,
 		buffer_length: u32,
 		info: &OperationInfo<'c, 'h, Self>,
 		context: &'c Self::Context,

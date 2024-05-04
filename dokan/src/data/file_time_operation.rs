@@ -2,8 +2,7 @@ use std::{
 	mem::transmute_copy,
 	time::{Duration, SystemTime, UNIX_EPOCH},
 };
-
-use winapi::shared::minwindef::FILETIME;
+use windows_sys::Win32::Foundation::FILETIME;
 
 use crate::to_file_time::FILETIME_OFFSET;
 
