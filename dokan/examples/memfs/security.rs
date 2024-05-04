@@ -1,12 +1,16 @@
 use std::{mem, pin::Pin, ptr};
-use std::ffi::c_void;
-use windows_sys::Win32::Foundation::{BOOL, ERROR_INSUFFICIENT_BUFFER, FALSE, GetLastError, HANDLE, PSID, STATUS_INVALID_PARAMETER, TRUE};
-use windows_sys::Win32::Security::{ACCESS_ALLOWED_ACE, ACL, ACL_REVISION, AddAccessAllowedAceEx, CONTAINER_INHERIT_ACE, CreatePrivateObjectSecurity, CreateWellKnownSid, DestroyPrivateObjectSecurity, GENERIC_MAPPING, GetPrivateObjectSecurity, GetSecurityDescriptorLength, InitializeAcl, InitializeSecurityDescriptor, IsValidSecurityDescriptor, MakeSelfRelativeSD, OBJECT_INHERIT_ACE, OBJECT_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, SECURITY_DESCRIPTOR, SEF_AVOID_OWNER_CHECK, SEF_AVOID_PRIVILEGE_CHECK, SetPrivateObjectSecurityEx, SetSecurityDescriptorDacl, SetSecurityDescriptorGroup, SetSecurityDescriptorOwner, SID, WELL_KNOWN_SID_TYPE, WinAuthenticatedUserSid, WinBuiltinAdministratorsSid, WinBuiltinUsersSid, WinLocalSystemSid};
-use windows_sys::Win32::Storage::FileSystem::{DELETE, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE};
-use windows_sys::Win32::System::Memory::{GetProcessHeap, HeapAlloc, HeapFree};
-use windows_sys::Win32::System::SystemServices::SECURITY_DESCRIPTOR_REVISION;
 
-use dokan::{map_win32_error_to_ntstatus, win32_ensure, OperationResult};
+use windows_sys::Win32::{
+	Foundation::{BOOL, ERROR_INSUFFICIENT_BUFFER, FALSE, GetLastError, HANDLE, PSID, STATUS_INVALID_PARAMETER, TRUE},
+	Security::{ACCESS_ALLOWED_ACE, ACL, ACL_REVISION, AddAccessAllowedAceEx, CONTAINER_INHERIT_ACE, CreatePrivateObjectSecurity, CreateWellKnownSid, DestroyPrivateObjectSecurity, GENERIC_MAPPING, GetPrivateObjectSecurity, GetSecurityDescriptorLength, InitializeAcl, InitializeSecurityDescriptor, IsValidSecurityDescriptor, MakeSelfRelativeSD, OBJECT_INHERIT_ACE, OBJECT_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, SECURITY_DESCRIPTOR, SEF_AVOID_OWNER_CHECK, SEF_AVOID_PRIVILEGE_CHECK, SetPrivateObjectSecurityEx, SetSecurityDescriptorDacl, SetSecurityDescriptorGroup, SetSecurityDescriptorOwner, SID, WELL_KNOWN_SID_TYPE, WinAuthenticatedUserSid, WinBuiltinAdministratorsSid, WinBuiltinUsersSid, WinLocalSystemSid},
+	Storage::FileSystem::{DELETE, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE},
+	System::{
+		Memory::{GetProcessHeap, HeapAlloc, HeapFree},
+		SystemServices::SECURITY_DESCRIPTOR_REVISION
+	}
+};
+
+use dokan::{map_win32_error_to_ntstatus, OperationResult, win32_ensure};
 
 #[derive(Debug)]
 struct PrivateObjectSecurity {
@@ -177,7 +181,7 @@ impl SecurityDescriptor {
 
 		unsafe {
 			let mut abs_desc = mem::zeroed::<SECURITY_DESCRIPTOR>();
-			let abs_desc_ptr = &mut abs_desc as *mut _ as *mut c_void;
+			let abs_desc_ptr = *abs_desc;
 
 			win32_ensure(
 				InitializeSecurityDescriptor(
@@ -235,7 +239,7 @@ impl SecurityDescriptor {
 	pub fn get_security_info(
 		&self,
 		sec_info: OBJECT_SECURITY_INFORMATION,
-		sec_desc: *mut c_void,
+		sec_desc: PSECURITY_DESCRIPTOR,
 		sec_desc_len: u32,
 	) -> OperationResult<u32> {
 		unsafe {
@@ -262,7 +266,7 @@ impl SecurityDescriptor {
 	pub fn set_security_info(
 		&mut self,
 		sec_info: OBJECT_SECURITY_INFORMATION,
-		sec_desc: *mut c_void,
+		sec_desc: PSECURITY_DESCRIPTOR,
 	) -> OperationResult<()> {
 		unsafe {
 			if IsValidSecurityDescriptor(sec_desc) == FALSE {
