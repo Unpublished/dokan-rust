@@ -5,8 +5,7 @@ extern crate regex;
 use std::{
 	cell::RefCell,
 	fmt::Debug,
-	mem
-	,
+	mem,
 	pin::Pin,
 	process, ptr,
 	sync::mpsc::{self, Receiver, SyncSender},
@@ -17,13 +16,36 @@ use std::ffi::c_void;
 
 use parking_lot::Mutex;
 use widestring::{U16CStr, U16CString};
-use windows_sys::Win32::Foundation::{BOOL, CloseHandle, ERROR_HANDLE_EOF, ERROR_INSUFFICIENT_BUFFER, ERROR_INTERNAL_ERROR, ERROR_IO_PENDING, ERROR_NO_MORE_FILES, FALSE, GENERIC_ALL, GENERIC_READ, GetLastError, HANDLE, HLOCAL, INVALID_HANDLE_VALUE, LocalFree, MAX_PATH, NTSTATUS, STATUS_ACCESS_DENIED, STATUS_NOT_IMPLEMENTED, STATUS_SUCCESS, TRUE};
-use windows_sys::Win32::Security::{ATTRIBUTE_SECURITY_INFORMATION, EqualSid, GetFileSecurityW, GetSecurityDescriptorOwner, GetTokenInformation, InitializeSecurityDescriptor, MakeSelfRelativeSD, OBJECT_SECURITY_INFORMATION, OWNER_SECURITY_INFORMATION, SECURITY_DESCRIPTOR, SetFileSecurityW, SetSecurityDescriptorOwner, TOKEN_QUERY, TOKEN_USER, TokenUser};
-use windows_sys::Win32::Security::Authorization::ConvertSidToStringSidW;
-use windows_sys::Win32::Storage::FileSystem::{CreateFileW, DeleteFileW, FILE_ACTION_ADDED, FILE_ACTION_MODIFIED, FILE_ACTION_REMOVED, FILE_ACTION_RENAMED_NEW_NAME, FILE_ACTION_RENAMED_OLD_NAME, FILE_ALL_ACCESS, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_READONLY, FILE_BEGIN, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OVERLAPPED, FILE_FLAG_WRITE_THROUGH, FILE_NOTIFY_CHANGE_ATTRIBUTES, FILE_NOTIFY_CHANGE_FILE_NAME, FILE_NOTIFY_INFORMATION, FILE_SHARE_READ, FindClose, FindFirstFileW, FindFirstStreamW, FindNextFileW, FindNextStreamW, FindStreamInfoStandard, FlushFileBuffers, GetDiskFreeSpaceExW, GetFileInformationByHandle, GetVolumeInformationW, LockFile, MOVEFILE_REPLACE_EXISTING, MoveFileExW, OPEN_EXISTING, ReadDirectoryChangesW, ReadFile, RemoveDirectoryW, SetEndOfFile, SetFileAttributesW, SetFilePointer, SetFileTime, SetFileValidData, UnlockFile, WIN32_FIND_STREAM_DATA, WriteFile};
-use windows_sys::Win32::System::IO::{GetOverlappedResult, OVERLAPPED};
-use windows_sys::Win32::System::SystemServices::{FILE_CASE_PRESERVED_NAMES, FILE_CASE_SENSITIVE_SEARCH, FILE_NAMED_STREAMS, FILE_UNICODE_ON_DISK, SECURITY_DESCRIPTOR_REVISION};
-use windows_sys::Win32::System::Threading::{CreateEventW, GetCurrentProcess, OpenProcessToken};
+use windows_sys::{
+	Win32::{
+		Foundation::{BOOL, CloseHandle, ERROR_HANDLE_EOF, ERROR_INSUFFICIENT_BUFFER, ERROR_INTERNAL_ERROR, ERROR_IO_PENDING, ERROR_NO_MORE_FILES, FALSE, GENERIC_ALL, GENERIC_READ, GetLastError, HANDLE, HLOCAL, INVALID_HANDLE_VALUE, LocalFree, MAX_PATH, NTSTATUS, STATUS_ACCESS_DENIED, STATUS_NOT_IMPLEMENTED, STATUS_SUCCESS, TRUE},
+		Security::{
+			Authorization::ConvertSidToStringSidW,
+			ATTRIBUTE_SECURITY_INFORMATION,
+			EqualSid,
+			GetFileSecurityW,
+			GetSecurityDescriptorOwner,
+			GetTokenInformation,
+			InitializeSecurityDescriptor,
+			MakeSelfRelativeSD,
+			OBJECT_SECURITY_INFORMATION,
+			OWNER_SECURITY_INFORMATION,
+			SECURITY_DESCRIPTOR,
+			SetFileSecurityW,
+			SetSecurityDescriptorOwner,
+			TOKEN_QUERY,
+			TOKEN_USER,
+			TokenUser,
+			PSECURITY_DESCRIPTOR
+		},
+		Storage::FileSystem::{CreateFileW, DeleteFileW, FILE_ACTION_ADDED, FILE_ACTION_MODIFIED, FILE_ACTION_REMOVED, FILE_ACTION_RENAMED_NEW_NAME, FILE_ACTION_RENAMED_OLD_NAME, FILE_ALL_ACCESS, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_READONLY, FILE_BEGIN, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OVERLAPPED, FILE_FLAG_WRITE_THROUGH, FILE_NOTIFY_CHANGE_ATTRIBUTES, FILE_NOTIFY_CHANGE_FILE_NAME, FILE_NOTIFY_INFORMATION, FILE_SHARE_READ, FindClose, FindFirstFileW, FindFirstStreamW, FindNextFileW, FindNextStreamW, FindStreamInfoStandard, FlushFileBuffers, GetDiskFreeSpaceExW, GetFileInformationByHandle, GetVolumeInformationW, LockFile, MOVEFILE_REPLACE_EXISTING, MoveFileExW, OPEN_EXISTING, ReadDirectoryChangesW, ReadFile, RemoveDirectoryW, SetEndOfFile, SetFileAttributesW, SetFilePointer, SetFileTime, SetFileValidData, UnlockFile, WIN32_FIND_STREAM_DATA, WriteFile},
+		System::{
+			IO::{GetOverlappedResult, OVERLAPPED},
+			SystemServices::{FILE_CASE_PRESERVED_NAMES, FILE_CASE_SENSITIVE_SEARCH, FILE_NAMED_STREAMS, FILE_UNICODE_ON_DISK, SECURITY_DESCRIPTOR_REVISION},
+			Threading::{CreateEventW, GetCurrentProcess, OpenProcessToken},
+		},
+	}
+};
 
 use dokan_sys::win32::{
 	FILE_NON_DIRECTORY_FILE, FILE_OPEN, FILE_SYNCHRONOUS_IO_NONALERT, FILE_WRITE_THROUGH,
@@ -159,7 +181,7 @@ fn check_pid(pid: u32) -> NtResult {
 	}
 }
 
-fn get_descriptor_owner(desc: *mut c_void) -> (U16CString, BOOL) {
+fn get_descriptor_owner(desc: PSECURITY_DESCRIPTOR) -> (U16CString, BOOL) {
 	unsafe {
 		let mut psid = ptr::null_mut();
 		let mut owner_defaulted = 0;
@@ -483,7 +505,7 @@ impl<'a, 'b: 'a> FileSystemHandler<'a, 'b> for TestHandler {
 				file_size: (1 << 32) + 2,
 				file_name: convert_str("test_inner_file"),
 			})
-			.map_err(Into::into),
+				.map_err(Into::into),
 			_ => Err(STATUS_ACCESS_DENIED),
 		}
 	}
@@ -508,12 +530,12 @@ impl<'a, 'b: 'a> FileSystemHandler<'a, 'b> for TestHandler {
 				file_size: (1 << 32) + 2,
 				file_name: convert_str("test_inner_file_with_pattern"),
 			})
-			.map(|_| {
-				self.tx
-					.send(HandlerSignal::FindFilesWithPattern(pattern.to_owned()))
-					.unwrap();
-			})
-			.map_err(Into::into),
+				.map(|_| {
+					self.tx
+						.send(HandlerSignal::FindFilesWithPattern(pattern.to_owned()))
+						.unwrap();
+				})
+				.map_err(Into::into),
 			_ => Err(STATUS_ACCESS_DENIED),
 		}
 	}
@@ -823,7 +845,7 @@ impl<'a, 'b: 'a> FileSystemHandler<'a, 'b> for TestHandler {
 				size: 42,
 				name: convert_str("::$DATA"),
 			})
-			.map_err(Into::into)
+				.map_err(Into::into)
 		} else {
 			Err(STATUS_ACCESS_DENIED)
 		}
@@ -1401,7 +1423,7 @@ fn can_set_file_security() {
 				desc.len() as u32,
 				OWNER_SECURITY_INFORMATION,
 				sid,
-				owner_defaulted
+				owner_defaulted,
 			)
 		);
 	});
@@ -1636,7 +1658,7 @@ fn can_notify() {
 		assert!(notify_create(
 			context.instance(),
 			convert_str("Z:\\test_notify_create"),
-			false
+			false,
 		));
 		assert_eq!(
 			rx.recv().unwrap(),
@@ -1645,7 +1667,7 @@ fn can_notify() {
 		assert!(notify_delete(
 			context.instance(),
 			convert_str("Z:\\test_notify_delete"),
-			false
+			false,
 		));
 		assert_eq!(
 			rx.recv().unwrap(),
@@ -1653,7 +1675,7 @@ fn can_notify() {
 		);
 		assert!(notify_update(
 			context.instance(),
-			convert_str("Z:\\test_notify_update")
+			convert_str("Z:\\test_notify_update"),
 		));
 		assert_eq!(
 			rx.recv().unwrap(),
@@ -1661,7 +1683,7 @@ fn can_notify() {
 		);
 		assert!(notify_xattr_update(
 			context.instance(),
-			convert_str("Z:\\test_notify_xattr_update")
+			convert_str("Z:\\test_notify_xattr_update"),
 		));
 		assert_eq!(
 			rx.recv().unwrap(),

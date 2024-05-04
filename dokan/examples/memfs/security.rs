@@ -1,7 +1,7 @@
 use std::{mem, pin::Pin, ptr};
 use std::ffi::c_void;
 use windows_sys::Win32::Foundation::{BOOL, ERROR_INSUFFICIENT_BUFFER, FALSE, GetLastError, HANDLE, PSID, STATUS_INVALID_PARAMETER, TRUE};
-use windows_sys::Win32::Security::{ACCESS_ALLOWED_ACE, ACL, ACL_REVISION, AddAccessAllowedAceEx, CONTAINER_INHERIT_ACE, CreatePrivateObjectSecurity, CreateWellKnownSid, DestroyPrivateObjectSecurity, GENERIC_MAPPING, GetPrivateObjectSecurity, GetSecurityDescriptorLength, InitializeAcl, InitializeSecurityDescriptor, IsValidSecurityDescriptor, MakeSelfRelativeSD, OBJECT_INHERIT_ACE, OBJECT_SECURITY_INFORMATION, SECURITY_DESCRIPTOR, SEF_AVOID_OWNER_CHECK, SEF_AVOID_PRIVILEGE_CHECK, SetPrivateObjectSecurityEx, SetSecurityDescriptorDacl, SetSecurityDescriptorGroup, SetSecurityDescriptorOwner, SID, WELL_KNOWN_SID_TYPE, WinAuthenticatedUserSid, WinBuiltinAdministratorsSid, WinBuiltinUsersSid, WinLocalSystemSid};
+use windows_sys::Win32::Security::{ACCESS_ALLOWED_ACE, ACL, ACL_REVISION, AddAccessAllowedAceEx, CONTAINER_INHERIT_ACE, CreatePrivateObjectSecurity, CreateWellKnownSid, DestroyPrivateObjectSecurity, GENERIC_MAPPING, GetPrivateObjectSecurity, GetSecurityDescriptorLength, InitializeAcl, InitializeSecurityDescriptor, IsValidSecurityDescriptor, MakeSelfRelativeSD, OBJECT_INHERIT_ACE, OBJECT_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, SECURITY_DESCRIPTOR, SEF_AVOID_OWNER_CHECK, SEF_AVOID_PRIVILEGE_CHECK, SetPrivateObjectSecurityEx, SetSecurityDescriptorDacl, SetSecurityDescriptorGroup, SetSecurityDescriptorOwner, SID, WELL_KNOWN_SID_TYPE, WinAuthenticatedUserSid, WinBuiltinAdministratorsSid, WinBuiltinUsersSid, WinLocalSystemSid};
 use windows_sys::Win32::Storage::FileSystem::{DELETE, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE};
 use windows_sys::Win32::System::Memory::{GetProcessHeap, HeapAlloc, HeapFree};
 use windows_sys::Win32::System::SystemServices::SECURITY_DESCRIPTOR_REVISION;
@@ -10,11 +10,11 @@ use dokan::{map_win32_error_to_ntstatus, win32_ensure, OperationResult};
 
 #[derive(Debug)]
 struct PrivateObjectSecurity {
-	value: *mut c_void,
+	value: PSECURITY_DESCRIPTOR,
 }
 
 impl PrivateObjectSecurity {
-	unsafe fn from_raw(ptr: *mut c_void) -> Self {
+	unsafe fn from_raw(ptr: PSECURITY_DESCRIPTOR) -> Self {
 		Self { value: ptr }
 	}
 }
@@ -29,7 +29,7 @@ impl Drop for PrivateObjectSecurity {
 
 #[derive(Debug)]
 pub struct SecurityDescriptor {
-	desc_ptr: *mut c_void,
+	desc_ptr: PSECURITY_DESCRIPTOR,
 }
 
 unsafe impl Sync for SecurityDescriptor {}
@@ -133,7 +133,7 @@ const FILE_GENERIC_MAPPING: GENERIC_MAPPING = GENERIC_MAPPING {
 impl SecurityDescriptor {
 	pub fn new_inherited(
 		parent_desc: &SecurityDescriptor,
-		creator_desc: *mut c_void,
+		creator_desc: PSECURITY_DESCRIPTOR,
 		token: HANDLE,
 		is_dir: bool,
 	) -> OperationResult<Self> {

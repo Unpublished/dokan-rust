@@ -1,36 +1,38 @@
-mod path;
-mod security;
-
 use std::{
 	borrow::Borrow,
 	collections::HashMap,
 	hash::{Hash, Hasher},
-	os::windows::io::AsRawHandle,
 	sync::{
-		atomic::{AtomicBool, AtomicU64, Ordering},
-		Arc, Mutex, RwLock, Weak,
+		Arc,
+		atomic::{AtomicBool, AtomicU64, Ordering}, Mutex, RwLock, Weak,
 	},
 	time::SystemTime,
 };
-use std::ffi::c_void;
 
 use clap::{Arg, Command};
+use widestring::{U16CStr, U16CString, U16Str, U16String};
+use windows_sys::Win32::{
+	Foundation::{HANDLE, STATUS_ACCESS_DENIED, STATUS_BUFFER_OVERFLOW, STATUS_CANNOT_DELETE, STATUS_DELETE_PENDING, STATUS_DIRECTORY_NOT_EMPTY, STATUS_FILE_IS_A_DIRECTORY, STATUS_INVALID_DEVICE_REQUEST, STATUS_INVALID_PARAMETER, STATUS_NOT_A_DIRECTORY, STATUS_OBJECT_NAME_COLLISION, STATUS_OBJECT_NAME_INVALID, STATUS_OBJECT_NAME_NOT_FOUND, STATUS_SHARING_VIOLATION},
+	Security::PSECURITY_DESCRIPTOR,
+	Storage::FileSystem::{FILE_ACCESS_RIGHTS, FILE_APPEND_DATA, FILE_ATTRIBUTE_ARCHIVE, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_NOT_CONTENT_INDEXED, FILE_ATTRIBUTE_OFFLINE, FILE_ATTRIBUTE_READONLY, FILE_ATTRIBUTE_SYSTEM, FILE_ATTRIBUTE_TEMPORARY, FILE_FLAGS_AND_ATTRIBUTES, FILE_WRITE_DATA},
+	System::SystemServices::{FILE_CASE_PRESERVED_NAMES, FILE_CASE_SENSITIVE_SEARCH, FILE_NAMED_STREAMS, FILE_PERSISTENT_ACLS, FILE_UNICODE_ON_DISK}
+};
+
 use dokan::{
-	init, shutdown, unmount, CreateFileInfo, DiskSpaceInfo, FileInfo, FileSystemHandler,
-	FileSystemMounter, FileTimeOperation, FillDataError, FillDataResult, FindData, FindStreamData,
-	MountFlags, MountOptions, OperationInfo, OperationResult, VolumeInfo, IO_SECURITY_CONTEXT,
+	CreateFileInfo, DiskSpaceInfo, FileInfo, FileSystemHandler, FileSystemMounter, FileTimeOperation, FillDataError,
+	FillDataResult, FindData, FindStreamData, init, IO_SECURITY_CONTEXT, MountFlags,
+	MountOptions, OperationInfo, OperationResult, shutdown, unmount, VolumeInfo,
 };
 use dokan_sys::win32::{
 	FILE_CREATE, FILE_DELETE_ON_CLOSE, FILE_DIRECTORY_FILE, FILE_MAXIMUM_DISPOSITION,
 	FILE_NON_DIRECTORY_FILE, FILE_OPEN, FILE_OPEN_IF, FILE_OVERWRITE, FILE_OVERWRITE_IF,
 	FILE_SUPERSEDE,
 };
-use widestring::{U16CStr, U16CString, U16Str, U16String};
-use windows_sys::Win32::Foundation::{HANDLE, STATUS_ACCESS_DENIED, STATUS_BUFFER_OVERFLOW, STATUS_CANNOT_DELETE, STATUS_DELETE_PENDING, STATUS_DIRECTORY_NOT_EMPTY, STATUS_FILE_IS_A_DIRECTORY, STATUS_INVALID_DEVICE_REQUEST, STATUS_INVALID_PARAMETER, STATUS_NOT_A_DIRECTORY, STATUS_OBJECT_NAME_COLLISION, STATUS_OBJECT_NAME_INVALID, STATUS_OBJECT_NAME_NOT_FOUND, STATUS_SHARING_VIOLATION};
-use windows_sys::Win32::Storage::FileSystem::{FILE_APPEND_DATA, FILE_ATTRIBUTE_ARCHIVE, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_NOT_CONTENT_INDEXED, FILE_ATTRIBUTE_OFFLINE, FILE_ATTRIBUTE_READONLY, FILE_ATTRIBUTE_SYSTEM, FILE_ATTRIBUTE_TEMPORARY, FILE_WRITE_DATA};
-use windows_sys::Win32::System::SystemServices::{FILE_CASE_PRESERVED_NAMES, FILE_CASE_SENSITIVE_SEARCH, FILE_NAMED_STREAMS, FILE_PERSISTENT_ACLS, FILE_UNICODE_ON_DISK};
 
 use crate::{path::FullName, security::SecurityDescriptor};
+
+mod path;
+mod security;
 
 #[derive(Debug)]
 struct AltStream {
@@ -417,7 +419,7 @@ impl MemFsHandler {
 		name: &FullName,
 		attrs: u32,
 		delete_on_close: bool,
-		creator_desc: *mut c_void,
+		creator_desc: PSECURITY_DESCRIPTOR,
 		token: HANDLE,
 		parent: &Arc<DirEntry>,
 		children: &mut HashMap<EntryName, Entry>,
@@ -486,8 +488,8 @@ impl<'c, 'h: 'c> FileSystemHandler<'c, 'h> for MemFsHandler {
 		&'h self,
 		file_name: &U16CStr,
 		security_context: &IO_SECURITY_CONTEXT,
-		desired_access: u32,
-		file_attributes: u32,
+		desired_access: FILE_ACCESS_RIGHTS,
+		file_attributes: FILE_FLAGS_AND_ATTRIBUTES,
 		_share_access: u32,
 		create_disposition: u32,
 		create_options: u32,
@@ -1218,7 +1220,7 @@ impl<'c, 'h: 'c> FileSystemHandler<'c, 'h> for MemFsHandler {
 		&'h self,
 		_file_name: &U16CStr,
 		security_information: u32,
-		security_descriptor: *mut c_void,
+		security_descriptor: PSECURITY_DESCRIPTOR,
 		buffer_length: u32,
 		_info: &OperationInfo<'c, 'h, Self>,
 		context: &'c Self::Context,
@@ -1236,7 +1238,7 @@ impl<'c, 'h: 'c> FileSystemHandler<'c, 'h> for MemFsHandler {
 		&'h self,
 		_file_name: &U16CStr,
 		security_information: u32,
-		security_descriptor: *mut c_void,
+		security_descriptor: PSECURITY_DESCRIPTOR,
 		_buffer_length: u32,
 		_info: &OperationInfo<'c, 'h, Self>,
 		context: &'c Self::Context,

@@ -16,12 +16,14 @@
 use std::ffi::c_void;
 
 use libc::c_int;
+use windows_sys::core::PCWSTR;
 use windows_sys::Win32::{
 	Foundation::{BOOL, BOOLEAN, FILETIME, MAX_PATH, NTSTATUS, UNICODE_STRING},
 	Storage::FileSystem::BY_HANDLE_FILE_INFORMATION,
 	Storage::FileSystem::WIN32_FIND_DATAW,
 };
 use windows_sys::Win32::Foundation::HANDLE;
+use windows_sys::Win32::Security::PSECURITY_DESCRIPTOR;
 
 use win32::PWIN32_FIND_STREAM_DATA;
 
@@ -55,8 +57,8 @@ pub struct DOKAN_OPTIONS {
 	pub SingleThread: BOOLEAN,
 	pub Options: u32,
 	pub GlobalContext: u64,
-	pub MountPoint: *const u16,
-	pub UNCName: *const u16,
+	pub MountPoint: PCWSTR,
+	pub UNCName: PCWSTR,
 	pub Timeout: u32,
 	pub AllocationUnitSize: u32,
 	pub SectorSize: u32,
@@ -97,7 +99,7 @@ pub struct DOKAN_ACCESS_STATE {
 	pub RemainingDesiredAccess: u32,
 	pub PreviouslyGrantedAccess: u32,
 	pub OriginalDesiredAccess: u32,
-	pub SecurityDescriptor: *mut c_void,
+	pub SecurityDescriptor: PSECURITY_DESCRIPTOR,
 	pub ObjectName: UNICODE_STRING,
 	pub ObjectType: UNICODE_STRING,
 }
@@ -117,7 +119,7 @@ pub type PDOKAN_IO_SECURITY_CONTEXT = *mut DOKAN_IO_SECURITY_CONTEXT;
 pub struct DOKAN_OPERATIONS {
 	pub ZwCreateFile: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			SecurityContext: PDOKAN_IO_SECURITY_CONTEXT,
 			DesiredAccess: u32,
 			FileAttributes: u32,
@@ -127,11 +129,11 @@ pub struct DOKAN_OPERATIONS {
 			DokanFileInfo: PDOKAN_FILE_INFO,
 		) -> NTSTATUS,
 	>,
-	pub Cleanup: Option<extern "stdcall" fn(FileName: *const u16, DokanFileInfo: PDOKAN_FILE_INFO)>,
-	pub CloseFile: Option<extern "stdcall" fn(FileName: *const u16, DokanFileInfo: PDOKAN_FILE_INFO)>,
+	pub Cleanup: Option<extern "stdcall" fn(FileName: PCWSTR, DokanFileInfo: PDOKAN_FILE_INFO)>,
+	pub CloseFile: Option<extern "stdcall" fn(FileName: PCWSTR, DokanFileInfo: PDOKAN_FILE_INFO)>,
 	pub ReadFile: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			Buffer: *mut c_void,
 			BufferLength: u32,
 			ReadLength: *mut u32,
@@ -141,7 +143,7 @@ pub struct DOKAN_OPERATIONS {
 	>,
 	pub WriteFile: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			Buffer: *const c_void,
 			NumberOfBytesToWrite: u32,
 			NumberOfBytesWritten: *mut u32,
@@ -150,39 +152,39 @@ pub struct DOKAN_OPERATIONS {
 		) -> NTSTATUS,
 	>,
 	pub FlushFileBuffers:
-		Option<extern "stdcall" fn(FileName: *const u16, DokanFileInfo: PDOKAN_FILE_INFO) -> NTSTATUS>,
+		Option<extern "stdcall" fn(FileName: PCWSTR, DokanFileInfo: PDOKAN_FILE_INFO) -> NTSTATUS>,
 	pub GetFileInformation: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			Buffer: *mut BY_HANDLE_FILE_INFORMATION,
 			DokanFileInfo: PDOKAN_FILE_INFO,
 		) -> NTSTATUS,
 	>,
 	pub FindFiles: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			FillFindData: PFillFindData,
 			DokanFileInfo: PDOKAN_FILE_INFO,
 		) -> NTSTATUS,
 	>,
 	pub FindFilesWithPattern: Option<
 		extern "stdcall" fn(
-			PathName: *const u16,
-			SearchPattern: *const u16,
+			PathName: PCWSTR,
+			SearchPattern: PCWSTR,
 			FillFindData: PFillFindData,
 			DokanFileInfo: PDOKAN_FILE_INFO,
 		) -> NTSTATUS,
 	>,
 	pub SetFileAttributes: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			FileAttributes: u32,
 			DokanFileInfo: PDOKAN_FILE_INFO,
 		) -> NTSTATUS,
 	>,
 	pub SetFileTime: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			creation_time: *const FILETIME,
 			last_access_time: *const FILETIME,
 			last_write_time: *const FILETIME,
@@ -190,34 +192,34 @@ pub struct DOKAN_OPERATIONS {
 		) -> NTSTATUS,
 	>,
 	pub DeleteFile:
-		Option<extern "stdcall" fn(FileName: *const u16, DokanFileInfo: PDOKAN_FILE_INFO) -> NTSTATUS>,
+		Option<extern "stdcall" fn(FileName: PCWSTR, DokanFileInfo: PDOKAN_FILE_INFO) -> NTSTATUS>,
 	pub DeleteDirectory:
-		Option<extern "stdcall" fn(FileName: *const u16, DokanFileInfo: PDOKAN_FILE_INFO) -> NTSTATUS>,
+		Option<extern "stdcall" fn(FileName: PCWSTR, DokanFileInfo: PDOKAN_FILE_INFO) -> NTSTATUS>,
 	pub MoveFile: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
-			NewFileName: *const u16,
+			FileName: PCWSTR,
+			NewFileName: PCWSTR,
 			ReplaceIfExisting: BOOL,
 			DokanFileInfo: PDOKAN_FILE_INFO,
 		) -> NTSTATUS,
 	>,
 	pub SetEndOfFile: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			ByteOffset: i64,
 			DokanFileInfo: PDOKAN_FILE_INFO,
 		) -> NTSTATUS,
 	>,
 	pub SetAllocationSize: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			AllocSize: i64,
 			DokanFileInfo: PDOKAN_FILE_INFO,
 		) -> NTSTATUS,
 	>,
 	pub LockFile: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			ByteOffset: i64,
 			Length: i64,
 			DokanFileInfo: PDOKAN_FILE_INFO,
@@ -225,7 +227,7 @@ pub struct DOKAN_OPERATIONS {
 	>,
 	pub UnlockFile: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			ByteOffset: i64,
 			Length: i64,
 			DokanFileInfo: PDOKAN_FILE_INFO,
@@ -252,12 +254,12 @@ pub struct DOKAN_OPERATIONS {
 		) -> NTSTATUS,
 	>,
 	pub Mounted: Option<
-		extern "stdcall" fn(MountPoint: *const u16, DokanFileInfo: PDOKAN_FILE_INFO) -> NTSTATUS,
+		extern "stdcall" fn(MountPoint: PCWSTR, DokanFileInfo: PDOKAN_FILE_INFO) -> NTSTATUS,
 	>,
 	pub Unmounted: Option<extern "stdcall" fn(DokanFileInfo: PDOKAN_FILE_INFO) -> NTSTATUS>,
 	pub GetFileSecurity: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			PSECURITY_INFORMATION: *mut u32,
 			PSECURITY_DESCRIPTOR: *mut c_void,
 			BufferLength: u32,
@@ -267,7 +269,7 @@ pub struct DOKAN_OPERATIONS {
 	>,
 	pub SetFileSecurity: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			SecurityInformation: *mut u32,
 			SecurityDescriptor: *mut c_void,
 			BufferLength: u32,
@@ -276,7 +278,7 @@ pub struct DOKAN_OPERATIONS {
 	>,
 	pub FindStreams: Option<
 		extern "stdcall" fn(
-			FileName: *const u16,
+			FileName: PCWSTR,
 			FillFindStreamData: PFillFindStreamData,
 			FindStreamContext: *mut c_void,
 			DokanFileInfo: PDOKAN_FILE_INFO,
@@ -323,8 +325,8 @@ extern "stdcall" {
 	) -> u32;
 	pub fn DokanCloseHandle(DokanInstance: DOKAN_HANDLE);
 	pub fn DokanUnmount(DriveLetter: u16) -> BOOL;
-	pub fn DokanRemoveMountPoint(MountPoint: *const u16) -> BOOL;
-	pub fn DokanIsNameInExpression(Expression: *const u16, Name: *const u16, IgnoreCase: BOOL) -> BOOL;
+	pub fn DokanRemoveMountPoint(MountPoint: PCWSTR) -> BOOL;
+	pub fn DokanIsNameInExpression(Expression: PCWSTR, Name: PCWSTR, IgnoreCase: BOOL) -> BOOL;
 	pub fn DokanVersion() -> u32;
 	pub fn DokanDriverVersion() -> u32;
 	pub fn DokanResetTimeout(Timeout: u32, DokanFileInfo: PDOKAN_FILE_INFO) -> BOOL;
@@ -342,20 +344,20 @@ extern "stdcall" {
 	);
 	pub fn DokanNotifyCreate(
 		DokanInstance: DOKAN_HANDLE,
-		FilePath: *const u16,
+		FilePath: PCWSTR,
 		IsDirectory: BOOL,
 	) -> BOOL;
 	pub fn DokanNotifyDelete(
 		DokanInstance: DOKAN_HANDLE,
-		FilePath: *const u16,
+		FilePath: PCWSTR,
 		IsDirectory: BOOL,
 	) -> BOOL;
-	pub fn DokanNotifyUpdate(DokanInstance: DOKAN_HANDLE, FilePath: *const u16) -> BOOL;
-	pub fn DokanNotifyXAttrUpdate(DokanInstance: DOKAN_HANDLE, FilePath: *const u16) -> BOOL;
+	pub fn DokanNotifyUpdate(DokanInstance: DOKAN_HANDLE, FilePath: PCWSTR) -> BOOL;
+	pub fn DokanNotifyXAttrUpdate(DokanInstance: DOKAN_HANDLE, FilePath: PCWSTR) -> BOOL;
 	pub fn DokanNotifyRename(
 		DokanInstance: DOKAN_HANDLE,
-		OldPath: *const u16,
-		NewPath: *const u16,
+		OldPath: PCWSTR,
+		NewPath: PCWSTR,
 		IsDirectory: BOOL,
 		IsInSameDirectory: BOOL,
 	) -> BOOL;
