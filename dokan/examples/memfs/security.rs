@@ -181,7 +181,7 @@ impl SecurityDescriptor {
 
 		unsafe {
 			let mut abs_desc = mem::zeroed::<SECURITY_DESCRIPTOR>();
-			let abs_desc_ptr = *abs_desc;
+			let abs_desc_ptr = &mut abs_desc as *mut _ as PSECURITY_DESCRIPTOR;
 
 			win32_ensure(
 				InitializeSecurityDescriptor(

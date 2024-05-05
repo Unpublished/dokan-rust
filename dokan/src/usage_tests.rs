@@ -16,35 +16,33 @@ use std::ffi::c_void;
 
 use parking_lot::Mutex;
 use widestring::{U16CStr, U16CString};
-use windows_sys::{
-	Win32::{
-		Foundation::{BOOL, CloseHandle, ERROR_HANDLE_EOF, ERROR_INSUFFICIENT_BUFFER, ERROR_INTERNAL_ERROR, ERROR_IO_PENDING, ERROR_NO_MORE_FILES, FALSE, GENERIC_ALL, GENERIC_READ, GetLastError, HANDLE, HLOCAL, INVALID_HANDLE_VALUE, LocalFree, MAX_PATH, NTSTATUS, STATUS_ACCESS_DENIED, STATUS_NOT_IMPLEMENTED, STATUS_SUCCESS, TRUE},
-		Security::{
-			Authorization::ConvertSidToStringSidW,
-			ATTRIBUTE_SECURITY_INFORMATION,
-			EqualSid,
-			GetFileSecurityW,
-			GetSecurityDescriptorOwner,
-			GetTokenInformation,
-			InitializeSecurityDescriptor,
-			MakeSelfRelativeSD,
-			OBJECT_SECURITY_INFORMATION,
-			OWNER_SECURITY_INFORMATION,
-			SECURITY_DESCRIPTOR,
-			SetFileSecurityW,
-			SetSecurityDescriptorOwner,
-			TOKEN_QUERY,
-			TOKEN_USER,
-			TokenUser,
-			PSECURITY_DESCRIPTOR
-		},
-		Storage::FileSystem::{CreateFileW, DeleteFileW, FILE_ACTION_ADDED, FILE_ACTION_MODIFIED, FILE_ACTION_REMOVED, FILE_ACTION_RENAMED_NEW_NAME, FILE_ACTION_RENAMED_OLD_NAME, FILE_ALL_ACCESS, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_READONLY, FILE_BEGIN, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OVERLAPPED, FILE_FLAG_WRITE_THROUGH, FILE_NOTIFY_CHANGE_ATTRIBUTES, FILE_NOTIFY_CHANGE_FILE_NAME, FILE_NOTIFY_INFORMATION, FILE_SHARE_READ, FindClose, FindFirstFileW, FindFirstStreamW, FindNextFileW, FindNextStreamW, FindStreamInfoStandard, FlushFileBuffers, GetDiskFreeSpaceExW, GetFileInformationByHandle, GetVolumeInformationW, LockFile, MOVEFILE_REPLACE_EXISTING, MoveFileExW, OPEN_EXISTING, ReadDirectoryChangesW, ReadFile, RemoveDirectoryW, SetEndOfFile, SetFileAttributesW, SetFilePointer, SetFileTime, SetFileValidData, UnlockFile, WIN32_FIND_STREAM_DATA, WriteFile},
-		System::{
-			IO::{GetOverlappedResult, OVERLAPPED},
-			SystemServices::{FILE_CASE_PRESERVED_NAMES, FILE_CASE_SENSITIVE_SEARCH, FILE_NAMED_STREAMS, FILE_UNICODE_ON_DISK, SECURITY_DESCRIPTOR_REVISION},
-			Threading::{CreateEventW, GetCurrentProcess, OpenProcessToken},
-		},
-	}
+use windows_sys::Win32::{
+	Foundation::{BOOL, CloseHandle, ERROR_HANDLE_EOF, ERROR_INSUFFICIENT_BUFFER, ERROR_INTERNAL_ERROR, ERROR_IO_PENDING, ERROR_NO_MORE_FILES, FALSE, GENERIC_ALL, GENERIC_READ, GetLastError, HANDLE, HLOCAL, INVALID_HANDLE_VALUE, LocalFree, MAX_PATH, NTSTATUS, STATUS_ACCESS_DENIED, STATUS_NOT_IMPLEMENTED, STATUS_SUCCESS, TRUE},
+	Security::{
+		ATTRIBUTE_SECURITY_INFORMATION,
+		Authorization::ConvertSidToStringSidW,
+		EqualSid,
+		GetFileSecurityW,
+		GetSecurityDescriptorOwner,
+		GetTokenInformation,
+		InitializeSecurityDescriptor,
+		MakeSelfRelativeSD,
+		OBJECT_SECURITY_INFORMATION,
+		OWNER_SECURITY_INFORMATION,
+		PSECURITY_DESCRIPTOR,
+		SECURITY_DESCRIPTOR,
+		SetFileSecurityW,
+		SetSecurityDescriptorOwner,
+		TOKEN_QUERY,
+		TOKEN_USER,
+		TokenUser
+	},
+	Storage::FileSystem::{CreateFileW, DeleteFileW, FILE_ACTION_ADDED, FILE_ACTION_MODIFIED, FILE_ACTION_REMOVED, FILE_ACTION_RENAMED_NEW_NAME, FILE_ACTION_RENAMED_OLD_NAME, FILE_ALL_ACCESS, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_READONLY, FILE_BEGIN, FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OVERLAPPED, FILE_FLAG_WRITE_THROUGH, FILE_NOTIFY_CHANGE_ATTRIBUTES, FILE_NOTIFY_CHANGE_FILE_NAME, FILE_NOTIFY_INFORMATION, FILE_SHARE_READ, FindClose, FindFirstFileW, FindFirstStreamW, FindNextFileW, FindNextStreamW, FindStreamInfoStandard, FlushFileBuffers, GetDiskFreeSpaceExW, GetFileInformationByHandle, GetVolumeInformationW, LockFile, MOVEFILE_REPLACE_EXISTING, MoveFileExW, OPEN_EXISTING, ReadDirectoryChangesW, ReadFile, RemoveDirectoryW, SetEndOfFile, SetFileAttributesW, SetFilePointer, SetFileTime, SetFileValidData, UnlockFile, WIN32_FIND_STREAM_DATA, WriteFile},
+	System::{
+		IO::{GetOverlappedResult, OVERLAPPED},
+		SystemServices::{FILE_CASE_PRESERVED_NAMES, FILE_CASE_SENSITIVE_SEARCH, FILE_NAMED_STREAMS, FILE_UNICODE_ON_DISK, SECURITY_DESCRIPTOR_REVISION},
+		Threading::{CreateEventW, GetCurrentProcess, OpenProcessToken},
+	},
 };
 
 use dokan_sys::win32::{
@@ -189,7 +187,7 @@ fn get_descriptor_owner(desc: PSECURITY_DESCRIPTOR) -> (U16CString, BOOL) {
 		let mut ps = ptr::null_mut();
 		assert_eq_win32!(ConvertSidToStringSidW(psid, &mut ps), TRUE);
 		let sid = U16CStr::from_ptr_str(ps).to_owned();
-		assert!(LocalFree(ps as HLOCAL).is_null());
+		assert_eq_win32!(LocalFree(ps as HLOCAL), 0 as HLOCAL);
 		(sid, owner_defaulted)
 	}
 }
@@ -207,7 +205,7 @@ fn get_user_info(token: HANDLE) -> Pin<Box<Vec<u8>>> {
 			GetTokenInformation(
 				token,
 				TokenUser,
-				user_info_buffer.as_mut_ptr() as *mut c_void,
+				user_info_buffer.as_mut_ptr() as *mut _,
 				user_info_len,
 				&mut user_info_len,
 			),
@@ -236,7 +234,7 @@ fn create_test_descriptor() -> Vec<u8> {
 		let mut user_info_buffer = get_current_user_info();
 		let user_info = &*(user_info_buffer.as_mut_ptr() as *mut TOKEN_USER);
 		let mut abs_desc = mem::zeroed::<SECURITY_DESCRIPTOR>();
-		let abs_desc_ptr = &mut abs_desc as *mut _ as *mut c_void;
+		let abs_desc_ptr = &mut abs_desc as *mut _ as PSECURITY_DESCRIPTOR;
 		assert_eq_win32!(
 			InitializeSecurityDescriptor(abs_desc_ptr, SECURITY_DESCRIPTOR_REVISION),
 			TRUE
@@ -255,7 +253,7 @@ fn create_test_descriptor() -> Vec<u8> {
 		assert_eq_win32!(
 			MakeSelfRelativeSD(
 				abs_desc_ptr,
-				rel_desc_buffer.as_mut_ptr() as *mut c_void,
+				rel_desc_buffer.as_mut_ptr() as PSECURITY_DESCRIPTOR,
 				&mut rel_desc_len,
 			),
 			TRUE
@@ -770,7 +768,7 @@ impl<'a, 'b: 'a> FileSystemHandler<'a, 'b> for TestHandler {
 		&'b self,
 		file_name: &U16CStr,
 		security_information: OBJECT_SECURITY_INFORMATION,
-		security_descriptor: *mut c_void,
+		security_descriptor: PSECURITY_DESCRIPTOR,
 		buffer_length: u32,
 		info: &OperationInfo<'a, 'b, Self>,
 		_context: &'a Self::Context,
@@ -794,7 +792,7 @@ impl<'a, 'b: 'a> FileSystemHandler<'a, 'b> for TestHandler {
 				if desc.len() <= buffer_length as usize {
 					unsafe {
 						desc.as_ptr()
-							.copy_to_nonoverlapping(security_descriptor as *mut _, desc.len());
+							.copy_to_nonoverlapping(security_descriptor.cast(), desc.len());
 					}
 				}
 				result
@@ -808,7 +806,7 @@ impl<'a, 'b: 'a> FileSystemHandler<'a, 'b> for TestHandler {
 		&'b self,
 		file_name: &U16CStr,
 		security_information: OBJECT_SECURITY_INFORMATION,
-		security_descriptor: *mut c_void,
+		security_descriptor: PSECURITY_DESCRIPTOR,
 		buffer_length: u32,
 		info: &OperationInfo<'a, 'b, Self>,
 		_context: &'a Self::Context,
@@ -1371,7 +1369,7 @@ fn can_get_file_security() {
 			GetFileSecurityW(
 				path.as_ptr(),
 				OWNER_SECURITY_INFORMATION,
-				desc.as_mut_ptr() as *mut c_void,
+				desc.as_mut_ptr() as PSECURITY_DESCRIPTOR,
 				desc.len() as u32,
 				&mut desc_len,
 			),
@@ -1411,7 +1409,7 @@ fn can_set_file_security() {
 	with_test_drive(|context| unsafe {
 		let path = convert_str("Z:\\test_set_file_security");
 		let mut desc = create_test_descriptor();
-		let desc_ptr = desc.as_mut_ptr() as *mut c_void;
+		let desc_ptr = desc.as_mut_ptr() as PSECURITY_DESCRIPTOR;
 		assert_eq_win32!(
 			SetFileSecurityW(path.as_ptr(), OWNER_SECURITY_INFORMATION, desc_ptr),
 			TRUE
@@ -1589,7 +1587,7 @@ impl DirectoryChangeIterator {
 			self.overlapped.hEvent = self.he;
 			let result = ReadDirectoryChangesW(
 				self.hd,
-				self.buf.as_mut_ptr() as *mut c_void,
+				self.buf.as_mut_ptr() as *mut _,
 				self.buf.len() as u32,
 				FALSE,
 				FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES,

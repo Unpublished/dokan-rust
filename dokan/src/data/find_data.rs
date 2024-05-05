@@ -4,7 +4,7 @@ use widestring::U16CString;
 use windows_sys::Win32::Foundation::MAX_PATH;
 use windows_sys::Win32::Storage::FileSystem::{WIN32_FIND_DATAW, WIN32_FIND_STREAM_DATA};
 
-use crate::{to_file_time::ToFileTime, FillDataError, FillDataResult};
+use crate::{FillDataError, FillDataResult, to_file_time::ToFileTime};
 
 pub(crate) trait ToRawStruct<T> {
 	fn to_raw_struct(&self) -> Option<T>;
@@ -81,7 +81,7 @@ pub struct FindStreamData {
 	pub name: U16CString,
 }
 
-const MAX_STREAM_NAME: usize = (MAX_PATH + 36) as usize;
+const MAX_STREAM_NAME: usize = MAX_PATH as usize + 36;
 
 impl ToRawStruct<WIN32_FIND_STREAM_DATA> for FindStreamData {
 	fn to_raw_struct(&self) -> Option<WIN32_FIND_STREAM_DATA> {
@@ -116,7 +116,6 @@ pub(crate) fn wrap_fill_data<T, U: ToRawStruct<T>, TArg: Copy, TResult: PartialE
 
 #[cfg(test)]
 mod tests {
-	use std::ffi::c_int;
 	use std::ptr;
 
 	use dokan_sys::PDOKAN_FILE_INFO;
@@ -137,11 +136,11 @@ mod tests {
 		}
 	}
 
-	extern "stdcall" fn fill_data_stub(_data: *mut (), _info: PDOKAN_FILE_INFO) -> c_int {
+	extern "stdcall" fn fill_data_stub(_data: *mut (), _info: PDOKAN_FILE_INFO) -> i32 {
 		0
 	}
 
-	extern "stdcall" fn failing_fill_data_stub(_data: *mut (), _info: PDOKAN_FILE_INFO) -> c_int {
+	extern "stdcall" fn failing_fill_data_stub(_data: *mut (), _info: PDOKAN_FILE_INFO) -> i32 {
 		1
 	}
 
