@@ -40,8 +40,9 @@ use windows_sys::{
 			FILE_CREATION_DISPOSITION,
 			FILE_FLAGS_AND_ATTRIBUTES,
 			WIN32_FIND_DATAW
-		}
-	},
+		},
+		System::Threading::WAITORTIMERCALLBACK
+	}
 };
 
 use win32::PWIN32_FIND_STREAM_DATA;
@@ -342,6 +343,17 @@ extern "stdcall" {
 		DokanInstance: DOKAN_HANDLE,
 		dwMilliseconds: u32,
 	) -> u32;
+	pub fn DokanRegisterWaitForFileSystemClosed(
+		DokanInstance: DOKAN_HANDLE,
+		WaitHandle: *mut HANDLE,
+		Callback: WAITORTIMERCALLBACK,
+		Context: *mut c_void,
+		dwMilliseconds: u32,
+	) -> BOOL;
+	pub fn DokanUnregisterWaitForFileSystemClosed(
+		WaitHandle: HANDLE,
+		WaitForCallbacks: BOOL
+	) -> BOOL;
 	pub fn DokanCloseHandle(DokanInstance: DOKAN_HANDLE);
 	pub fn DokanUnmount(DriveLetter: u16) -> BOOL;
 	pub fn DokanRemoveMountPoint(MountPoint: PCWSTR) -> BOOL;
