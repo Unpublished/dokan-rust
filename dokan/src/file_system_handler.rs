@@ -1,9 +1,11 @@
-use dokan_sys::DOKAN_IO_SECURITY_CONTEXT;
 use widestring::U16CStr;
-use winapi::{
-	shared::{ntdef::NTSTATUS, ntstatus::STATUS_NOT_IMPLEMENTED},
-	um::winnt::{ACCESS_MASK, PSECURITY_DESCRIPTOR},
+use windows_sys::Win32::{
+	Foundation::{NTSTATUS, STATUS_NOT_IMPLEMENTED},
+	Security::{OBJECT_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR},
+	Storage::FileSystem::{FILE_ACCESS_RIGHTS, FILE_FLAGS_AND_ATTRIBUTES}
 };
+
+use dokan_sys::DOKAN_IO_SECURITY_CONTEXT;
 
 use crate::data::{
 	CreateFileInfo, DiskSpaceInfo, FileInfo, FileTimeOperation, FillDataResult, FindData,
@@ -50,8 +52,8 @@ pub trait FileSystemHandler<'c, 'h: 'c>: Sync + Sized + 'h {
 		&'h self,
 		file_name: &U16CStr,
 		security_context: &DOKAN_IO_SECURITY_CONTEXT,
-		desired_access: ACCESS_MASK,
-		file_attributes: u32,
+		desired_access: FILE_ACCESS_RIGHTS,
+		file_attributes: FILE_FLAGS_AND_ATTRIBUTES,
 		share_access: u32,
 		create_disposition: u32,
 		create_options: u32,
@@ -227,7 +229,7 @@ pub trait FileSystemHandler<'c, 'h: 'c>: Sync + Sized + 'h {
 	fn set_file_attributes(
 		&'h self,
 		file_name: &U16CStr,
-		file_attributes: u32,
+		file_attributes: FILE_FLAGS_AND_ATTRIBUTES,
 		info: &OperationInfo<'c, 'h, Self>,
 		context: &'c Self::Context,
 	) -> OperationResult<()> {
@@ -437,7 +439,7 @@ pub trait FileSystemHandler<'c, 'h: 'c>: Sync + Sized + 'h {
 	fn get_file_security(
 		&'h self,
 		file_name: &U16CStr,
-		security_information: u32,
+		security_information: OBJECT_SECURITY_INFORMATION,
 		security_descriptor: PSECURITY_DESCRIPTOR,
 		buffer_length: u32,
 		info: &OperationInfo<'c, 'h, Self>,
@@ -454,7 +456,7 @@ pub trait FileSystemHandler<'c, 'h: 'c>: Sync + Sized + 'h {
 	fn set_file_security(
 		&'h self,
 		file_name: &U16CStr,
-		security_information: u32,
+		security_information: OBJECT_SECURITY_INFORMATION,
 		security_descriptor: PSECURITY_DESCRIPTOR,
 		buffer_length: u32,
 		info: &OperationInfo<'c, 'h, Self>,

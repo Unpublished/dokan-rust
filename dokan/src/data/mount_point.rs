@@ -5,7 +5,6 @@ use dokan_sys::{
 	*,
 };
 use widestring::U16CStr;
-use winapi::shared::minwindef::ULONG;
 
 /// Mount point device type.
 #[repr(u32)]
@@ -106,7 +105,7 @@ impl Drop for MountPointList {
 /// Returns `None` in case of error.
 pub fn list_mount_points<'a>(unc_only: bool) -> Option<MountPointList> {
 	unsafe {
-		let mut len: ULONG = 0;
+		let mut len: u32 = 0;
 		let list_ptr = DokanGetMountPointList(unc_only.into(), &mut len);
 		if list_ptr.is_null() {
 			None
@@ -122,7 +121,7 @@ fn can_list_mount_points() {
 	use std::process;
 
 	use regex::Regex;
-	use winapi::{shared::minwindef::TRUE, um::processthreadsapi::ProcessIdToSessionId};
+	use windows_sys::Win32::{Foundation::TRUE, System::RemoteDesktop::ProcessIdToSessionId};
 
 	use crate::usage_tests::{convert_str, with_test_drive};
 

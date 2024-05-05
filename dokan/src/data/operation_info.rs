@@ -1,14 +1,14 @@
 use std::{
 	marker::PhantomData,
-	os::windows::prelude::{FromRawHandle, OwnedHandle},
 	time::Duration,
 };
 
-use dokan_sys::{
-	DokanOpenRequestorToken, DokanResetTimeout, DOKAN_FILE_INFO, DOKAN_OPTIONS, PDOKAN_FILE_INFO,
-};
 use widestring::U16CStr;
-use winapi::{shared::minwindef::TRUE, um::handleapi::INVALID_HANDLE_VALUE};
+use windows_sys::Win32::Foundation::{HANDLE, TRUE};
+
+use dokan_sys::{
+	DOKAN_FILE_INFO, DOKAN_OPTIONS, DokanOpenRequestorToken, DokanResetTimeout, PDOKAN_FILE_INFO,
+};
 
 use crate::{file_system_handler::FileSystemHandler, MountFlags};
 
@@ -152,13 +152,13 @@ impl<'c, 'h: 'c, FSH: FileSystemHandler<'c, 'h> + 'h> OperationInfo<'c, 'h, FSH>
 	/// Gets the access token associated with the calling process.
 	///
 	/// Returns `None` on error.
-	pub fn requester_token(&self) -> Option<OwnedHandle> {
+	pub fn requester_token(&self) -> Option<HANDLE> {
 		unsafe {
 			let value = DokanOpenRequestorToken(self.file_info);
-			if value == INVALID_HANDLE_VALUE {
+			if value == 0 {
 				None
 			} else {
-				Some(OwnedHandle::from_raw_handle(value))
+				Some(value)
 			}
 		}
 	}

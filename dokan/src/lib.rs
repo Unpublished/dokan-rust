@@ -22,6 +22,22 @@
 //! [`dokan-sys`]: https://crates.io/crates/dokan-sys
 //! [`winapi`]: https://crates.io/crates/winapi
 
+use widestring::U16CStr;
+use windows_sys::Win32::{
+	Foundation::{FALSE, GetLastError, NTSTATUS, TRUE},
+	Storage::FileSystem::{FILE_ACCESS_RIGHTS, FILE_CREATION_DISPOSITION, FILE_FLAGS_AND_ATTRIBUTES}
+};
+
+use dokan_sys::*;
+/// Re-exported from `dokan-sys` for convenience.
+pub use dokan_sys::{
+	DOKAN_DRIVER_NAME as DRIVER_NAME, DOKAN_IO_SECURITY_CONTEXT as IO_SECURITY_CONTEXT,
+	DOKAN_MAJOR_API_VERSION as MAJOR_API_VERSION, DOKAN_NP_NAME as NP_NAME,
+	DOKAN_VERSION as WRAPPER_VERSION,
+};
+
+pub use crate::{data::*, file_system::*, file_system_handler::*, notify::*};
+
 mod data;
 mod file_system;
 mod file_system_handler;
@@ -32,25 +48,6 @@ mod to_file_time;
 
 #[cfg(test)]
 mod usage_tests;
-
-use dokan_sys::*;
-use widestring::U16CStr;
-use winapi::{
-	shared::{
-		minwindef::{DWORD, FALSE, TRUE},
-		ntdef::NTSTATUS,
-	},
-	um::{errhandlingapi::GetLastError, winnt::ACCESS_MASK},
-};
-
-pub use crate::{data::*, file_system::*, file_system_handler::*, notify::*};
-
-/// Re-exported from `dokan-sys` for convenience.
-pub use dokan_sys::{
-	DOKAN_DRIVER_NAME as DRIVER_NAME, DOKAN_IO_SECURITY_CONTEXT as IO_SECURITY_CONTEXT,
-	DOKAN_MAJOR_API_VERSION as MAJOR_API_VERSION, DOKAN_NP_NAME as NP_NAME,
-	DOKAN_VERSION as WRAPPER_VERSION,
-};
 
 /// Initializes all required Dokan internal resources.
 ///
@@ -142,13 +139,13 @@ fn test_is_name_in_expression() {
 }
 
 /// Converts Win32 error (e.g. returned by [`GetLastError`]) to [`NTSTATUS`].
-pub fn map_win32_error_to_ntstatus(error: DWORD) -> NTSTATUS {
+pub fn map_win32_error_to_ntstatus(error: u32) -> NTSTATUS {
 	unsafe { DokanNtStatusFromWin32(error) }
 }
 
 #[test]
 fn can_map_win32_error_to_ntstatus() {
-	use winapi::shared::{ntstatus::STATUS_INTERNAL_ERROR, winerror::ERROR_INTERNAL_ERROR};
+	use windows_sys::Win32::Foundation::{ERROR_INTERNAL_ERROR, STATUS_INTERNAL_ERROR};
 
 	assert_eq!(
 		map_win32_error_to_ntstatus(ERROR_INTERNAL_ERROR),
@@ -172,7 +169,7 @@ fn can_map_win32_error_to_ntstatus() {
 /// #
 /// # use dokan::win32_ensure;
 /// # use widestring::U16CString;
-/// # use winapi::{shared::ntdef::NTSTATUS, um::processenv::GetCurrentDirectoryW};
+/// use windows_sys::Win32::{Foundation::NTSTATUS, System::Environment::GetCurrentDirectoryW };
 /// #
 /// fn get_current_directory() -> Result<U16CString, NTSTATUS> {
 /// 	unsafe {
@@ -203,11 +200,11 @@ pub fn win32_ensure(condition: bool) -> Result<(), NTSTATUS> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UserCreateFileFlags {
 	/// The requested access to the file.
-	pub desired_access: ACCESS_MASK,
+	pub desired_access: FILE_ACCESS_RIGHTS,
 	/// The file attributes and flags.
-	pub flags_and_attributes: u32,
+	pub flags_and_attributes: FILE_FLAGS_AND_ATTRIBUTES,
 	/// The action to take on the file that exists or does not exist.
-	pub creation_disposition: u32,
+	pub creation_disposition: FILE_CREATION_DISPOSITION,
 }
 
 /// Converts the arguments passed to [`FileSystemHandler::create_file`] to flags accepted by the
@@ -219,10 +216,10 @@ pub struct UserCreateFileFlags {
 /// [`CreateFile`]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew
 /// [`IRP_MJ_CREATE`]: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/irp-mj-create
 pub fn map_kernel_to_user_create_file_flags(
-	desired_access: ACCESS_MASK,
-	file_attributes: u32,
+	desired_access: FILE_ACCESS_RIGHTS,
+	file_attributes: FILE_FLAGS_AND_ATTRIBUTES,
 	create_options: u32,
-	create_disposition: u32,
+	create_disposition: FILE_CREATION_DISPOSITION,
 ) -> UserCreateFileFlags {
 	let mut result = UserCreateFileFlags {
 		desired_access: 0,
@@ -246,14 +243,8 @@ pub fn map_kernel_to_user_create_file_flags(
 #[test]
 fn test_map_kernel_to_user_create_file_flags() {
 	use dokan_sys::win32::{FILE_OPEN, FILE_WRITE_THROUGH};
-	use winapi::um::{
-		fileapi::OPEN_EXISTING,
-		winbase::FILE_FLAG_WRITE_THROUGH,
-		winnt::{
-			FILE_ALL_ACCESS, FILE_ATTRIBUTE_NORMAL, GENERIC_ALL, GENERIC_EXECUTE, GENERIC_READ,
-			GENERIC_WRITE,
-		},
-	};
+	use windows_sys::Win32::Foundation::{GENERIC_ALL, GENERIC_EXECUTE, GENERIC_READ, GENERIC_WRITE};
+	use windows_sys::Win32::Storage::FileSystem::{FILE_ALL_ACCESS, FILE_ATTRIBUTE_NORMAL, FILE_FLAG_WRITE_THROUGH, OPEN_EXISTING};
 
 	let result = map_kernel_to_user_create_file_flags(
 		FILE_ALL_ACCESS,

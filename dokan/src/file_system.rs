@@ -20,7 +20,7 @@ use dokan_sys::{
 	VOLUME_SECURITY_DESCRIPTOR_MAX_SIZE,
 };
 use widestring::U16CStr;
-use winapi::{shared::ntdef::SCHAR, um::winbase::INFINITE};
+use windows_sys::Win32::System::Threading::INFINITE;
 
 use crate::{file_system_handler::FileSystemHandler, operations, WRAPPER_VERSION};
 
@@ -121,7 +121,7 @@ pub struct MountOptions<'a> {
 	/// See [`InitializeSecurityDescriptor`].
 	///
 	/// [`InitializeSecurityDescriptor`]: https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-initializesecuritydescriptor
-	pub volume_security_descriptor: Option<[SCHAR; VOLUME_SECURITY_DESCRIPTOR_MAX_SIZE]>,
+	pub volume_security_descriptor: Option<[i8; VOLUME_SECURITY_DESCRIPTOR_MAX_SIZE]>,
 }
 
 impl<'a> Default for MountOptions<'a> {

@@ -1,13 +1,4 @@
-use winapi::shared::{
-	minwindef::MAX_PATH,
-	ntdef::{LARGE_INTEGER, WCHAR},
-};
-
-#[repr(C)]
-pub struct WIN32_FIND_STREAM_DATA {
-	pub StreamSize: LARGE_INTEGER,
-	pub cStreamName: [WCHAR; MAX_PATH + 36],
-}
+use windows_sys::Win32::Storage::FileSystem::WIN32_FIND_STREAM_DATA;
 
 pub type PWIN32_FIND_STREAM_DATA = *mut WIN32_FIND_STREAM_DATA;
 
