@@ -135,7 +135,7 @@ dependencies = [
 
 [[package]]
 name = "dokan"
-version = "0.3.1+dokan206"
+version = "0.3.1+dokan210"
 dependencies = [
  "bitflags",
  "clap",
@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "dokan-sys"
-version = "0.3.1+dokan206"
+version = "0.3.1+dokan210"
 dependencies = [
  "cc",
  "libc",
