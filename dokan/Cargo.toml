@@ -18,13 +18,12 @@ appveyor = { repository = "Liryna/dokan-rust" }
 [dependencies]
 bitflags = "2.5.0"
 dokan-sys = { version = "0.3.1", path = "../dokan-sys" }
-widestring = "0.4.3"
+widestring = "0.5.1"
 windows-sys = { version = "0.52.0", features = [
     "Win32_Foundation",
     "Win32_Storage",
     "Win32_Storage_FileSystem"
 ] }
-
 
 [dev-dependencies]
 clap = "4.5.4"
